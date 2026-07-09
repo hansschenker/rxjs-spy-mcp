@@ -78,7 +78,7 @@ http://127.0.0.1:5173
 
 1. Start the app with `npm run dev`.
 2. Open the browser DevTools console.
-3. Type a search query, for example `rxjs`, and press **Search**.
+3. The app should already have recorded an initial `INIT` transition.
 4. Inspect the tracked streams:
 
 ```js
@@ -97,7 +97,8 @@ window.__RXJS_SPY_MCP__.inspectStream('main-app-state')
 window.__RXJS_SPY_MCP__.getTimeline('main-app-state', 10)
 ```
 
-7. Simulate a failing async effect by typing:
+7. Type a search query, for example `rxjs`, and press **Search**.
+8. Simulate a failing async effect by typing:
 
 ```text
 error
@@ -105,7 +106,7 @@ error
 
 Then press **Search**.
 
-8. Inspect the timeline again:
+9. Inspect the timeline again:
 
 ```js
 window.__RXJS_SPY_MCP__.getTimeline('main-app-state', 20)
@@ -138,6 +139,57 @@ The async effect failed.
 The model moved into an error state.
 The view rendered the error.
 ```
+
+## If `getTimeline('main-app-state', 20)` returns `[]`
+
+Run this first:
+
+```js
+window.__RXJS_SPY_MCP__.diagnose()
+```
+
+Then run:
+
+```js
+window.__RXJS_SPY_MCP__.listStreams()
+```
+
+Expected after a fresh page load:
+
+```text
+streamCount >= 1
+streamTags includes "main-app-state"
+mainStateHistorySize >= 1
+```
+
+Also check that you use the exact global name with two underscores before and after `RXJS_SPY_MCP`:
+
+```js
+window.__RXJS_SPY_MCP__
+```
+
+not:
+
+```js
+window._RXJS_SPY_MCP_
+```
+
+If the timeline is still empty:
+
+```bash
+git pull
+npm install
+npm run dev
+```
+
+Then hard-refresh the browser tab and run:
+
+```js
+window.__RXJS_SPY_MCP__.diagnose()
+window.__RXJS_SPY_MCP__.getTimeline('main-app-state', 20)
+```
+
+The current implementation uses a seeded `BehaviorSubject<Msg>` for the MVU message source, so an `INIT` transition should be recorded immediately when `runtime.appState$` is subscribed in `main.ts`.
 
 ## Sample: visual time-travel
 
@@ -179,6 +231,8 @@ window.__RXJS_SPY_MCP__.inspectStream('counter-stream')
 ### MVU transition inspection
 
 ```ts
+const msg$ = new BehaviorSubject<Msg>({ type: 'INIT' });
+
 const transition$ = msg$.pipe(
   scan(
     (acc, msg) => ({ msg, model: update(acc.model, msg) }),
@@ -238,7 +292,7 @@ A fallback MCP approach is script evaluation:
 | TypeScript correctness | Split app and debug types, fixed invalid imports, removed `any`-based `INITIALIZE`, added strict typed operators. |
 | Chrome MCP API correctness | Replaced the invented `navigator.developerTools.registerTool` idea with a `devtoolstooldiscovery` bridge for Chrome DevTools third-party tools. |
 | rxjs-spy replacement completeness | Added a foundation for tagged streams, notification frames, subscription IDs, teardown tracking, and stream summaries. Still not a full rxjs-spy replacement. |
-| AI-agent usability | Added JSON-friendly `listStreams`, `inspectStream`, and `getTimeline` methods. |
+| AI-agent usability | Added JSON-friendly `diagnose`, `listStreams`, `inspectStream`, and `getTimeline` methods. |
 | Production safety | Dev-only installation, redaction for secret-like keys, safe snapshot serialization, circular-value tolerance, and size-limited snapshots. |
 
 ## Current limitations
