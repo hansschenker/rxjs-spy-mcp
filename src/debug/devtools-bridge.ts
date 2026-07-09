@@ -75,6 +75,26 @@ export function registerRxjsSpyMcpDevToolsBridge(): void {
           },
           execute: async (input: { tag: string; limit?: number }) =>
             registry.getTimeline(input.tag, input.limit ?? 25)
+        },
+        {
+          name: 'rxjs_story',
+          description: 'Return a compact human-readable story for one tracked RxJS stream.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              tag: {
+                type: 'string',
+                description: 'The RxJS stream tag to summarize.'
+              },
+              limit: {
+                type: 'number',
+                description: 'Maximum number of story frames to return.'
+              }
+            },
+            required: ['tag']
+          },
+          execute: async (input: { tag: string; limit?: number }) =>
+            registry.story(input.tag, input.limit ?? 25)
         }
       ]
     });
