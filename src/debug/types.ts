@@ -54,6 +54,22 @@ export interface StreamRecordSnapshot extends StreamSummary {
   history: DebugFrame[];
 }
 
+export interface StreamStoryFrame {
+  index: number;
+  id: number;
+  tag: string;
+  kind: DebugFrameKind;
+  action: string;
+  elapsedMs: number;
+  subscriptionId?: string;
+  searchQuery?: string;
+  activeQuery?: string | null;
+  isLoading?: boolean;
+  resultCount?: number;
+  errorMessage?: string | null;
+  summary: string;
+}
+
 export interface SpyDiagnostics {
   version: string;
   spyEnabled: boolean;
@@ -73,6 +89,7 @@ export interface RxjsSpyMcpApi {
   listStreams(): StreamSummary[];
   inspectStream(tag: string): StreamRecordSnapshot | null;
   getTimeline(tag: string, limit?: number): DebugFrame[];
+  story(tag: string, limit?: number): StreamStoryFrame[];
   selectFrame(tag: string, index: number): boolean;
   clearStream(tag: string): boolean;
   clearAll(): void;
