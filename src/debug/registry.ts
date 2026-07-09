@@ -5,6 +5,7 @@ import type {
   SpyDiagnostics,
   StreamRecordSnapshot,
   StreamStatus,
+  StreamStoryFrame,
   StreamSummary
 } from './types';
 import { makeSafeSnapshot, type SnapshotOptions } from './snapshot';
@@ -191,6 +192,10 @@ export class SpyRegistry implements RxjsSpyMcpApi {
     return record.history.slice(-limit);
   }
 
+  story(tag: string, limit = DEFAULT_MAX_FRAMES): StreamStoryFrame[] {
+    return this.getTimeline(tag, limit).map((frame, index) => toStoryFrame(frame, index));
+  }
+
   selectFrame(tag: string, index: number): boolean {
     const record = this.streams.get(tag);
     if (!record || index < 0 || index >= record.history.length) return false;
@@ -249,6 +254,99 @@ export class SpyRegistry implements RxjsSpyMcpApi {
       lastFrame: record.history.at(-1)
     };
   }
+}
+
+function toStoryFrame(frame: DebugFrame, index: number): StreamStoryFrame {
+  const action = asRecord(frame.action);
+  const state = asRecord(frame.resultingState);
+  const actionType = getString(action, 'type') ?? frame.kind;
+  const searchQuery = getString(state, 'searchQuery');
+  const activeQuery = getNullableString(state, 'activeQuery');
+  const isLoading = getBoolean(state, 'isLoading');
+  const resultCount = getArrayLength(state, 'results');
+  const errorMessage = getNullableString(state, 'errorMessage');
+
+  return {
+    index,
+    id: frame.id,
+    tag: frame.tag,
+    kind: frame.kind,
+    action: actionType,
+    elapsedMs: frame.elapsedMs,
+    subscriptionId: frame.subscriptionId,
+    searchQuery,
+    activeQuery,
+    isLoading,
+    resultCount,
+    errorMessage,
+    summary: summarizeFrame({
+      kind: frame.kind,
+      actionType,
+      searchQuery,
+      activeQuery,
+      isLoading,
+      resultCount,
+      errorMessage
+    })
+  };
+}
+
+function summarizeFrame(input: {
+  kind: string;
+  actionType: string;
+  searchQuery?: string;
+  activeQuery?: string | null;
+  isLoading?: boolean;
+  resultCount?: number;
+  errorMessage?: string | null;
+}): string {
+  if (input.kind !== 'mvu-transition') {
+    return `${input.kind} notification observed`;
+  }
+
+  const stateParts = [
+    `query=${quote(input.searchQuery ?? '')}`,
+    `active=${quote(input.activeQuery ?? '')}`,
+    `loading=${String(input.isLoading ?? false)}`,
+    `results=${String(input.resultCount ?? 0)}`
+  ];
+
+  if (input.errorMessage) {
+    stateParts.push(`error=${quote(input.errorMessage)}`);
+  }
+
+  return `${input.actionType} -> ${stateParts.join(', ')}`;
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function getString(record: Record<string, unknown>, key: string): string | undefined {
+  const value = record[key];
+  return typeof value === 'string' ? value : undefined;
+}
+
+function getNullableString(record: Record<string, unknown>, key: string): string | null | undefined {
+  const value = record[key];
+  if (value === null) return null;
+  return typeof value === 'string' ? value : undefined;
+}
+
+function getBoolean(record: Record<string, unknown>, key: string): boolean | undefined {
+  const value = record[key];
+  return typeof value === 'boolean' ? value : undefined;
+}
+
+function getArrayLength(record: Record<string, unknown>, key: string): number | undefined {
+  const value = record[key];
+  return Array.isArray(value) ? value.length : undefined;
+}
+
+function quote(value: string): string {
+  return JSON.stringify(value);
 }
 
 export const registry = new SpyRegistry();
