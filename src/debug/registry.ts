@@ -2,6 +2,7 @@ import type {
   DebugFrame,
   RxjsSpyMcpApi,
   SchedulerTrace,
+  SpyDiagnostics,
   StreamRecordSnapshot,
   StreamStatus,
   StreamSummary
@@ -20,6 +21,7 @@ interface MutableStreamRecord {
 }
 
 const DEFAULT_MAX_FRAMES = 50;
+const MAIN_STATE_TAG = 'main-app-state';
 const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
 let frameId = 0;
 let subscriptionId = 0;
@@ -32,6 +34,40 @@ export class SpyRegistry implements RxjsSpyMcpApi {
   readonly version = '0.1.0';
 
   private readonly streams = new Map<string, MutableStreamRecord>();
+
+  diagnose(): SpyDiagnostics {
+    const mainStateStream = this.streams.get(MAIN_STATE_TAG);
+    const streamTags = Array.from(this.streams.keys());
+    const tips: string[] = [];
+
+    if (!mainStateStream) {
+      tips.push('No main-app-state stream exists yet. Confirm the page loaded the current bundle and that main.ts subscribed to runtime.appState$.');
+    }
+
+    if (mainStateStream && mainStateStream.history.length === 0) {
+      tips.push('main-app-state exists but has no frames. Refresh the page and check the browser console for runtime errors.');
+    }
+
+    if (streamTags.length === 0) {
+      tips.push('No streams are tracked. Pull the latest repo changes, run npm install, then run npm run dev and hard-refresh the browser.');
+    }
+
+    tips.push('Use the exact global name: window.__RXJS_SPY_MCP__ with two underscores before and after RXJS_SPY_MCP.');
+    tips.push('The demo should record an INIT mvu-transition immediately after the page renders.');
+
+    return {
+      version: this.version,
+      spyEnabled: isSpyEnabled(),
+      streamCount: this.streams.size,
+      streamTags,
+      expectedMainStateTag: MAIN_STATE_TAG,
+      hasMainStateStream: Boolean(mainStateStream),
+      mainStateHistorySize: mainStateStream?.history.length ?? 0,
+      documentReadyState: typeof document !== 'undefined' ? document.readyState : undefined,
+      location: typeof window !== 'undefined' ? window.location.href : undefined,
+      tips
+    };
+  }
 
   ensureStream(tag: string, maxFrames = DEFAULT_MAX_FRAMES): MutableStreamRecord {
     const existing = this.streams.get(tag);
