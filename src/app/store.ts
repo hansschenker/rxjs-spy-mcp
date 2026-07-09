@@ -1,5 +1,6 @@
 import {
   BehaviorSubject,
+  Subscription,
   catchError,
   filter,
   map,
@@ -9,8 +10,7 @@ import {
   shareReplay,
   switchMap,
   timer,
-  type Observable,
-  type Subscription
+  type Observable
 } from 'rxjs';
 import { registry } from '../debug/registry';
 import { spyOnMvuLoop } from '../debug/operators';
