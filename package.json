@@ -1,0 +1,18 @@
+{
+  "name": "rxjs-spy-mcp",
+  "version": "0.1.0",
+  "description": "Experimental RxJS runtime debugger for Chrome DevTools MCP agents.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc -p tsconfig.json && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  }
+}
