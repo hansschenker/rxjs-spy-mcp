@@ -97,8 +97,29 @@ window.__RXJS_SPY_MCP__.inspectStream('main-app-state')
 window.__RXJS_SPY_MCP__.getTimeline('main-app-state', 10)
 ```
 
-7. Type a search query, for example `rxjs`, and press **Search**.
-8. Simulate a failing async effect by typing:
+7. Read the compact runtime story:
+
+```js
+window.__RXJS_SPY_MCP__.story('main-app-state', 20)
+```
+
+As a table:
+
+```js
+console.table(window.__RXJS_SPY_MCP__.story('main-app-state', 20))
+```
+
+The story output turns raw debug frames into rows like:
+
+```text
+INIT -> query="", active="", loading=false, results=0
+SET_QUERY -> query="rxjs", active="", loading=false, results=0
+START_SEARCH -> query="rxjs", active="rxjs", loading=true, results=0
+SEARCH_SUCCESS -> query="rxjs", active="rxjs", loading=false, results=3
+```
+
+8. Type a search query, for example `rxjs`, and press **Search**.
+9. Simulate a failing async effect by typing:
 
 ```text
 error
@@ -106,10 +127,10 @@ error
 
 Then press **Search**.
 
-9. Inspect the timeline again:
+10. Inspect the story again:
 
 ```js
-window.__RXJS_SPY_MCP__.getTimeline('main-app-state', 20)
+console.table(window.__RXJS_SPY_MCP__.story('main-app-state', 20))
 ```
 
 You should see a sequence similar to:
@@ -260,12 +281,13 @@ When Chrome DevTools MCP is connected with the experimental third-party tools ca
 rxjs_list_streams
 rxjs_inspect_stream
 rxjs_get_timeline
+rxjs_story
 ```
 
 A typical AI-agent prompt:
 
 ```text
-Inspect the active browser tab with Chrome DevTools MCP. Use the rxjs-spy-mcp tools to list RxJS streams, read the main-app-state timeline, and explain why the latest search failed.
+Inspect the active browser tab with Chrome DevTools MCP. Use the rxjs-spy-mcp tools to list RxJS streams, read the main-app-state story, and explain why the latest search failed.
 ```
 
 Expected agent behavior:
@@ -273,14 +295,14 @@ Expected agent behavior:
 ```text
 1. list_3p_developer_tools
 2. execute_3p_developer_tool: rxjs_list_streams
-3. execute_3p_developer_tool: rxjs_get_timeline { tag: 'main-app-state', limit: 20 }
+3. execute_3p_developer_tool: rxjs_story { tag: 'main-app-state', limit: 20 }
 4. Explain the Msg -> Model transition that caused the bad state.
 ```
 
 A fallback MCP approach is script evaluation:
 
 ```js
-() => globalThis.__RXJS_SPY_MCP__.getTimeline('main-app-state', 20)
+() => globalThis.__RXJS_SPY_MCP__.story('main-app-state', 20)
 ```
 
 ## Corrections applied to the original prototype
@@ -292,7 +314,7 @@ A fallback MCP approach is script evaluation:
 | TypeScript correctness | Split app and debug types, fixed invalid imports, removed `any`-based `INITIALIZE`, added strict typed operators. |
 | Chrome MCP API correctness | Replaced the invented `navigator.developerTools.registerTool` idea with a `devtoolstooldiscovery` bridge for Chrome DevTools third-party tools. |
 | rxjs-spy replacement completeness | Added a foundation for tagged streams, notification frames, subscription IDs, teardown tracking, and stream summaries. Still not a full rxjs-spy replacement. |
-| AI-agent usability | Added JSON-friendly `diagnose`, `listStreams`, `inspectStream`, and `getTimeline` methods. |
+| AI-agent usability | Added JSON-friendly `diagnose`, `listStreams`, `inspectStream`, `getTimeline`, and `story` methods. |
 | Production safety | Dev-only installation, redaction for secret-like keys, safe snapshot serialization, circular-value tolerance, and size-limited snapshots. |
 
 ## Current limitations
