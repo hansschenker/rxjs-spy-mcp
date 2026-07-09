@@ -54,8 +54,22 @@ export interface StreamRecordSnapshot extends StreamSummary {
   history: DebugFrame[];
 }
 
+export interface SpyDiagnostics {
+  version: string;
+  spyEnabled: boolean;
+  streamCount: number;
+  streamTags: string[];
+  expectedMainStateTag: 'main-app-state';
+  hasMainStateStream: boolean;
+  mainStateHistorySize: number;
+  documentReadyState?: string;
+  location?: string;
+  tips: string[];
+}
+
 export interface RxjsSpyMcpApi {
   readonly version: string;
+  diagnose(): SpyDiagnostics;
   listStreams(): StreamSummary[];
   inspectStream(tag: string): StreamRecordSnapshot | null;
   getTimeline(tag: string, limit?: number): DebugFrame[];
