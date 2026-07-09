@@ -1,6 +1,5 @@
 import {
   BehaviorSubject,
-  Subject,
   catchError,
   filter,
   map,
@@ -8,7 +7,6 @@ import {
   of,
   scan,
   shareReplay,
-  startWith,
   switchMap,
   timer,
   type Observable,
@@ -29,11 +27,12 @@ export interface AppRuntime {
 }
 
 export function createAppRuntime(): AppRuntime {
-  const msg$ = new Subject<Msg>();
+  // BehaviorSubject makes the initial runtime message explicit.
+  // That means a fresh subscription always sees INIT and the debugger always records an initial frame.
+  const msg$ = new BehaviorSubject<Msg>({ type: 'INIT' });
   const visualTimeTravel$ = new BehaviorSubject<Model | null>(null);
 
   const transition$ = msg$.pipe(
-    startWith({ type: 'INIT' } satisfies Msg),
     scan(
       (acc, msg) => ({
         msg,
