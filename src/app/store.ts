@@ -19,6 +19,16 @@ import { initialModel, type Dispatch, type Model, type Msg } from './types';
 
 const MAIN_STATE_TAG = 'main-app-state';
 
+type AppTransition = {
+  msg: Msg;
+  model: Model;
+};
+
+const initialTransition: AppTransition = {
+  msg: { type: 'INIT' },
+  model: initialModel
+};
+
 export interface AppRuntime {
   appState$: Observable<Model>;
   dispatch: Dispatch;
@@ -33,12 +43,12 @@ export function createAppRuntime(): AppRuntime {
   const visualTimeTravel$ = new BehaviorSubject<Model | null>(null);
 
   const transition$ = msg$.pipe(
-    scan(
-      (acc, msg) => ({
+    scan<Msg, AppTransition>(
+      (acc, msg): AppTransition => ({
         msg,
         model: update(acc.model, msg)
       }),
-      { msg: { type: 'INIT' } satisfies Msg, model: initialModel }
+      initialTransition
     ),
     spyOnMvuLoop<Msg, Model>(MAIN_STATE_TAG, { maxFrames: 80 }),
     shareReplay({ bufferSize: 1, refCount: true })
