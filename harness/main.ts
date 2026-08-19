@@ -1,4 +1,16 @@
-import { interval, map, mergeMap, Subject, switchMap, take, throwError, timer } from "rxjs";
+import {
+  debounceTime,
+  interval,
+  map,
+  mergeMap,
+  of,
+  retry,
+  Subject,
+  switchMap,
+  take,
+  throwError,
+  timer,
+} from "rxjs";
 import { create, isClosed } from "../src/index";
 import type { SnapshotNode } from "../src/index";
 import { tag } from "../src/operators";
@@ -52,6 +64,61 @@ document.querySelector("#failing")?.addEventListener("click", () => {
       error: (error: unknown) => write(`failing errored: ${String(error)}`),
     });
   write("failing stream started");
+});
+
+declare global {
+  interface Window {
+    typeaheadInput?: Subject<string>;
+  }
+}
+
+document.querySelector("#typeahead")?.addEventListener("click", () => {
+  // The pipeline from docs/mcp-debug-session.md: debounced keystrokes into a
+  // flaky API (fails twice, succeeds on the 3rd attempt) behind retry, with
+  // switchMap cancelling in-flight requests when the query changes.
+  let attempt = 0;
+  const flakyApi = (query: string) =>
+    timer(120).pipe(
+      mergeMap(() =>
+        ++attempt % 3 === 0
+          ? of({ attempt, hits: query.length * 3, query })
+          : throwError(
+              () => new Error(`HTTP 500 for "${query}" (attempt ${attempt})`),
+            ),
+      ),
+      tag("typeahead.api.request"),
+    );
+  const input = new Subject<string>();
+  window.typeaheadInput = input;
+  input
+    .pipe(
+      tag("typeahead.keystrokes"),
+      debounceTime(200),
+      tag("typeahead.query"),
+      switchMap((query) =>
+        flakyApi(query).pipe(
+          retry({ count: 3, delay: 80 }),
+          tag("typeahead.api.retried"),
+        ),
+      ),
+      map((r) => `"${r.query}" -> ${r.hits} hits (api attempt #${r.attempt})`),
+      tag("typeahead.results"),
+    )
+    .subscribe((line) => write(line));
+  // Scripted session: a fast keystroke burst that debounce collapses, a
+  // second query, then a query switch while its retry cycle is in flight.
+  const script: [number, string][] = [
+    [0, "r"],
+    [60, "rx"],
+    [120, "rxj"],
+    [180, "rxjs"],
+    [1600, "rxjs spy"],
+    [2400, "ngrx"],
+  ];
+  script.forEach(([ms, text]) => {
+    setTimeout(() => input.next(text), ms);
+  });
+  write('typeahead started — feed more with typeaheadInput.next("...")');
 });
 
 // --- Debugger output panel -------------------------------------------------
