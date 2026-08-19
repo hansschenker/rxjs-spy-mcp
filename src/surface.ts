@@ -1,6 +1,8 @@
 import type { LogEntry } from "./log-plugin";
-import { parseMatch } from "./match";
+import { matches, parseMatch } from "./match";
+import type { Match } from "./match";
 import { isClosed } from "./record";
+import type { SubscriptionRecord } from "./record";
 import type { SerializeOptions } from "./serialize";
 import type { SnapshotResult } from "./snapshot";
 import type { LogHandle, Spy } from "./spy";
@@ -53,6 +55,32 @@ export interface SurfaceSnapshotOptions {
   serialize?: SerializeOptions;
 }
 
+export interface LifecycleItem {
+  ageMs: number;
+  id: number;
+  observableId: number;
+  /** Compact trace, e.g. "SNNCU", "SN×42U", or "SNN" (open - no U yet). */
+  sequence: string;
+  stackTrace?: string[];
+  tag?: string;
+  /** Tags found anywhere in this subscription's source subtree - names an untagged root. */
+  tags?: string[];
+}
+
+export interface LifecyclesOptions {
+  /** Check every record, not just roots (application subscribe calls). */
+  all?: boolean;
+  match?: string;
+  /** Only report open subscriptions at least this old. */
+  olderThanMs?: number;
+}
+
+export interface LifecyclesResult {
+  note: string;
+  open: LifecycleItem[];
+  summary: { closed: number; open: number; records: number };
+}
+
 export interface MethodDescriptor {
   description: string;
   example: string;
@@ -78,6 +106,7 @@ export interface SpySurface {
   activeLogs(): LogHandle[] | SurfaceError;
   flush(): { flushed: number } | SurfaceError;
   help(): HelpResult | SurfaceError;
+  lifecycles(options?: LifecyclesOptions): LifecyclesResult | SurfaceError;
   listTags(): TagsResult | SurfaceError;
   log(
     match?: string,
@@ -112,6 +141,63 @@ export function createSurface(spy: Spy): SpySurface {
     activeLogs: guard(() => spy.logs()),
     flush: guard(() => ({ flushed: spy.flush(true) })),
     help: guard(() => helpFor(spy)),
+    lifecycles: guard((options: LifecyclesOptions = {}): LifecyclesResult => {
+      spy.flush();
+      const parsedMatch: Match | undefined =
+        options.match === undefined ? undefined : parseMatch(options.match);
+      const subtreeMatches = (record: SubscriptionRecord): boolean =>
+        parsedMatch === undefined ||
+        matches(record, parsedMatch) ||
+        record.sources.some(subtreeMatches);
+      const records = spy
+        .records()
+        .filter((record) => options.all === true || record.sink === undefined)
+        .filter(options.all === true && parsedMatch !== undefined
+          ? (record) => matches(record, parsedMatch)
+          : subtreeMatches);
+      const now = Date.now();
+      const olderThanMs = options.olderThanMs ?? 0;
+      const toSequence = (record: SubscriptionRecord): string => {
+        const n = record.nextCount;
+        const nexts = n === 0 ? "" : n <= 5 ? "N".repeat(n) : `N×${n}`;
+        const terminal = record.completed ? "C" : record.errored ? "E" : "";
+        return `S${nexts}${terminal}${isClosed(record) ? "U" : ""}`;
+      };
+      const open: LifecycleItem[] = [];
+      let closed = 0;
+      for (const record of records) {
+        if (isClosed(record)) {
+          closed += 1;
+          continue;
+        }
+        const ageMs = now - record.subscribedAt;
+        if (ageMs < olderThanMs) {
+          continue;
+        }
+        const tags = new Set<string>();
+        const collectTags = (source: SubscriptionRecord): void => {
+          if (source.tag !== undefined) {
+            tags.add(source.tag);
+          }
+          source.sources.forEach(collectTags);
+        };
+        collectTags(record);
+        open.push({
+          ageMs,
+          id: record.id,
+          observableId: record.observableId,
+          sequence: toSequence(record),
+          stackTrace: record.stackTrace?.slice(0, 5),
+          tag: record.tag,
+          tags: [...tags].slice(0, 5),
+        });
+      }
+      return {
+        note: "Grammar: S N* (C|E)? U. Every subscription must end with U; entries in `open` have not been torn down - expected for streams that should still be live, a leak otherwise. stackTrace shows the subscribe site.",
+        open,
+        summary: { closed, open: open.length, records: records.length },
+      };
+    }),
     listTags: guard((): TagsResult => {
       spy.flush();
       const byTag = new Map<
@@ -232,6 +318,13 @@ function helpFor(spy: Spy): HelpResult {
         example: "__RXJS_SPY__.listTags()",
         name: "listTags",
         signature: "listTags()",
+      },
+      {
+        description:
+          "Leak check via the lifecycle grammar S N* (C|E)? U: lists open subscriptions (an S without its closing U) with age, compact sequence, and subscribe-site stack trace. Streams that should still be live also appear - narrow with match/olderThanMs.",
+        example: "__RXJS_SPY__.lifecycles({ olderThanMs: 60000 })",
+        name: "lifecycles",
+        signature: "lifecycles({ match?, olderThanMs?, all? })",
       },
       {
         description:

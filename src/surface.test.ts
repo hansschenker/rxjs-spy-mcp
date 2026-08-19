@@ -1,10 +1,11 @@
-import { Subject } from "rxjs";
+import { of, Subject } from "rxjs";
 import { afterEach, describe, expect, it } from "vitest";
 import { tag } from "./operators";
 import { create } from "./spy";
 import type { Spy } from "./spy";
 import type {
   HelpResult,
+  LifecyclesResult,
   LogsResult,
   SpySurface,
   StatusResult,
@@ -109,6 +110,28 @@ describe("SpySurface", () => {
     const second = surface.logs({ sinceIndex: first.nextIndex }) as LogsResult;
     expect(second.entries).toHaveLength(0);
     expect(surface.unlog()).toEqual({ removed: 1 });
+  });
+
+  it("reports open subscriptions (S without U) via lifecycles()", () => {
+    spy = create({ global: GLOBAL, logger: { log: () => {} } });
+    const surface = getSurface();
+    const live = new Subject<number>();
+    live.pipe(tag("live")).subscribe();
+    live.next(1);
+    of(1, 2).pipe(tag("done")).subscribe();
+    const result = surface.lifecycles() as LifecyclesResult;
+    expect(result.summary).toEqual({ closed: 1, open: 1, records: 2 });
+    expect(result.open[0].tag).toBe("live");
+    expect(result.open[0].tags).toContain("live");
+    expect(result.open[0].sequence).toBe("SN");
+    expect(result.open[0].stackTrace).toBeDefined();
+    const filtered = surface.lifecycles({ match: "live" }) as LifecyclesResult;
+    expect(filtered.summary.records).toBe(1);
+    const none = surface.lifecycles({
+      olderThanMs: 60_000,
+    }) as LifecyclesResult;
+    expect(none.open).toHaveLength(0);
+    expect(() => JSON.stringify(result)).not.toThrow();
   });
 
   it("describes every surface method in help()", () => {

@@ -151,9 +151,11 @@ describe("Spy", () => {
       afterComplete: () => hooks.push("afterComplete"),
       afterNext: () => hooks.push("afterNext"),
       afterSubscribe: () => hooks.push("afterSubscribe"),
+      afterUnsubscribe: () => hooks.push("afterUnsubscribe"),
       beforeComplete: () => hooks.push("beforeComplete"),
       beforeNext: () => hooks.push("beforeNext"),
       beforeSubscribe: () => hooks.push("beforeSubscribe"),
+      beforeUnsubscribe: () => hooks.push("beforeUnsubscribe"),
       name: "order",
     };
     spy.plug(plugin);
@@ -165,11 +167,13 @@ describe("Spy", () => {
       "afterNext",
       "beforeComplete",
       "afterComplete",
+      "beforeUnsubscribe",
+      "afterUnsubscribe",
       "afterSubscribe",
     ]);
   });
 
-  it("fires unsubscribe hooks once and not after terminal notifications", () => {
+  it("fires unsubscribe hooks exactly once per subscription", () => {
     spy = create({ installGlobal: false });
     const hooks: string[] = [];
     spy.plug({
@@ -178,12 +182,35 @@ describe("Spy", () => {
       name: "unsub",
     });
     of(1).subscribe();
-    expect(hooks).toEqual([]);
+    expect(hooks).toEqual(["beforeUnsubscribe", "afterUnsubscribe"]);
+    hooks.length = 0;
     const subject = new Subject<number>();
     const subscription = subject.subscribe();
     subscription.unsubscribe();
     subscription.unsubscribe();
     expect(hooks).toEqual(["beforeUnsubscribe", "afterUnsubscribe"]);
+  });
+
+  it("guarantees the lifecycle grammar S N* (C|E)? U in log entries", () => {
+    spy = create({ installGlobal: false, logger: { log: () => {} } });
+    spy.log((tag_) => tag_ !== undefined);
+    const sequence = (tag_: string): string =>
+      spy!
+        .logEntries(0, 100)
+        .entries.filter((entry) => entry.tag === tag_)
+        .map((entry) => entry.notification[0].toUpperCase())
+        .join("");
+    of(1, 2).pipe(tag("completed")).subscribe();
+    expect(sequence("completed")).toBe("SNNCU");
+    throwError(() => new Error("boom"))
+      .pipe(tag("errored"))
+      .subscribe({ error: () => {} });
+    expect(sequence("errored")).toBe("SEU");
+    const subject = new Subject<number>();
+    const subscription = subject.pipe(tag("cancelled")).subscribe();
+    subject.next(1);
+    subscription.unsubscribe();
+    expect(sequence("cancelled")).toBe("SNU");
   });
 
   it("survives a throwing plugin", () => {

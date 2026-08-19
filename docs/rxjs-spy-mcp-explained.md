@@ -29,14 +29,35 @@ Everything the spy reports is one of five notifications, and they mean exactly w
 | `next` | `N` | the stream emitted a value (shown inline) |
 | `error` | `E` | the stream failed (message + stack shown inline) |
 | `complete` | `C` | the stream finished normally |
-| `unsubscribe` | `U` | the listener was cancelled before the stream finished |
+| `unsubscribe` | `U` | the subscription was torn down — always the final event |
 
 Human-facing output (console lines, the harness panel) uses the compact letters — `[rxjs-spy] N orders.results 42` means "the `orders.results` stream emitted `42`". The JSON returned by `logs()` keeps the full words so agents never have to guess.
 
-Two patterns are worth recognizing on sight:
+**The lifecycle grammar.** Every subscription's trace follows one fixed shape — `S`, then any number of `N`, then one of three endings:
 
-- **`error` followed by another `subscribe` on the same tag = a retry.** `retry()` works by resubscribing, so each attempt shows up as its own subscribe/error pair.
-- **`unsubscribe` before any `complete` = a cancellation.** This is `switchMap` killing a stale request, `takeUntil` firing, or you calling `.unsubscribe()`. If you suspect a leak, this is the event you're looking for — or missing.
+```
+S N N N ... C U    completed normally, then torn down
+S N N ...   E U    errored, then torn down
+S N ...       U    cancelled mid-flight (switchMap, takeUntil, .unsubscribe())
+```
+
+`U` always closes the lifecycle — the spy emits it even after `C`/`E`, because RxJS always tears down after a terminal notification. (`C` after `E` never occurs; they are mutually exclusive terminals.) This gives you two powerful reading rules:
+
+- **`E` followed by another `S` on the same tag = a retry.** `retry()` works by resubscribing, so each attempt shows as its own `S`...`E U` group.
+- **An `S` with no matching `U` = a live subscription.** Fine while the stream should be running; a leak if it should not.
+
+That second rule is built in as **`lifecycles()`** — the leak check. It scans every subscription record, renders its compact sequence, and returns the ones that are still missing their `U`, each with its age and the stack trace of the `.subscribe()` call that created it:
+
+```js
+__RXJS_SPY__.lifecycles({ olderThanMs: 60000 })
+// {
+//   summary: { records: 12, closed: 11, open: 1 },
+//   open: [{ sequence: "SN×42", tag: "orders.results", ageMs: 754000,
+//            stackTrace: ["at OrdersComponent.ngOnInit (orders.component.ts:31)", ...] }]
+// }
+```
+
+An empty `open` list means every subscription ended with its `U` — unsubscribe ran everywhere. Entries in `open` are either streams that *should* still be live (your app's main subscriptions) or genuine leaks; `olderThanMs` and `match` narrow the list, and the harness has a "Check lifecycles" button doing the same.
 
 ## The subscription record
 
@@ -82,6 +103,7 @@ That one tree answers: how many requests were made, which were cancelled, which 
 | `log("search")` | "Start recording everything that happens to `search`" |
 | `logs({ sinceIndex: 0 })` | "Give me what was recorded since I last asked" |
 | `snapshot({ match: "search" })` | "Show me the subscription tree for `search` right now" |
+| `lifecycles({ olderThanMs? })` | "Did every subscription get its `U` — is anything leaking?" |
 | `unlog()` / `flush()` | stop recording / drop closed records now |
 | `teardown()` | stop spying entirely and restore RxJS untouched |
 

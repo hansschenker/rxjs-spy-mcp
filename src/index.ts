@@ -19,6 +19,9 @@ export { create, Spy } from "./spy";
 export type { LogHandle, SpyOptions } from "./spy";
 export type {
   HelpResult,
+  LifecycleItem,
+  LifecyclesOptions,
+  LifecyclesResult,
   LogsOptions,
   LogsResult,
   MethodDescriptor,

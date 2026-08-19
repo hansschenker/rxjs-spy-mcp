@@ -353,15 +353,19 @@ export class Spy {
     record.error = error;
     record.errored = true;
     record.closedAt = Date.now();
-    if (observer.error) {
-      observer.error(error);
-    } else {
-      // No consumer error handler: rethrow so RxJS's consumer-observer
-      // catch routes this to its unhandled-error reporting, exactly as it
-      // would without the spy.
-      throw error;
+    try {
+      if (observer.error) {
+        observer.error(error);
+      } else {
+        // No consumer error handler: rethrow so RxJS's consumer-observer
+        // catch routes this to its unhandled-error reporting, exactly as it
+        // would without the spy.
+        throw error;
+      }
+      this.notify_("afterError", record, error);
+    } finally {
+      this.notifyTeardown_(record);
     }
-    this.notify_("afterError", record, error);
   }
 
   private observeComplete_(
@@ -374,6 +378,19 @@ export class Spy {
     record.closedAt = Date.now();
     observer.complete?.();
     this.notify_("afterComplete", record);
+    this.notifyTeardown_(record);
+  }
+
+  /**
+   * Emits the unsubscribe hooks that close every record's lifecycle. RxJS
+   * always tears down immediately after a terminal notification, so firing
+   * here guarantees the trace grammar S N* (C|E)? U: exactly one U per
+   * subscription, whether it completed, errored, or was cancelled.
+   */
+  private notifyTeardown_(record: SubscriptionRecord): void {
+    record.tick = ++this.tick_;
+    this.notify_("beforeUnsubscribe", record);
+    this.notify_("afterUnsubscribe", record);
   }
 
   private createRecord_(observable: Observable<unknown>): SubscriptionRecord {
@@ -457,7 +474,7 @@ function captureStackTrace(): string[] {
   for (const frame of frames) {
     if (
       skipping &&
-      /captureStackTrace|createRecord_|spySubscribe_|Observable\.subscribe/.test(
+      /captureStackTrace|createRecord_|spySubscribe_|Observable\d*\.subscribe/.test(
         frame,
       )
     ) {

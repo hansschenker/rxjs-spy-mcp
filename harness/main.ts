@@ -169,6 +169,34 @@ document.querySelector("#spy-snapshot-take")?.addEventListener("click", () => {
     : "(no records)";
 });
 
+document.querySelector("#spy-lifecycles")?.addEventListener("click", () => {
+  if (!spySnapshot) {
+    return;
+  }
+  const surface = window.__RXJS_SPY__;
+  if (!surface) {
+    return;
+  }
+  const result = surface.lifecycles();
+  if ("error" in result) {
+    spySnapshot.textContent = `lifecycles failed: ${result.error.message}`;
+    return;
+  }
+  const lines = result.open.map(
+    (item) =>
+      `${item.sequence.padEnd(10)} ${item.tag ?? item.tags?.join(",") ?? `#${item.observableId}`} — open for ${(item.ageMs / 1000).toFixed(1)}s`,
+  );
+  spySnapshot.textContent = `lifecycles: ${result.summary.open} open / ${result.summary.closed} closed (roots)\n${
+    lines.length ? lines.join("\n") : "(every subscription ended with U)"
+  }`;
+});
+
+declare global {
+  interface Window {
+    __RXJS_SPY__?: import("../src/index").SpySurface;
+  }
+}
+
 let sinceIndex = 0;
 let panelPrimed = false;
 setInterval(() => {
