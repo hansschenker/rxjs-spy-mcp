@@ -1,7 +1,7 @@
 {
   "name": "rxjs-spy",
   "version": "9.0.0-dev.0",
-  "description": "A debugging library for RxJS with an MCP-friendly in-page surface",
+  "description": "A debugging library for RxJS 7 with an MCP-friendly in-page surface, driven via Chrome DevTools MCP",
   "author": "Nicholas Jamieson <nicholas@cartant.com>",
   "license": "MIT",
   "private": true,
@@ -12,12 +12,24 @@
   "types": "./dist/index.d.cts",
   "exports": {
     ".": {
-      "import": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
-      "require": { "types": "./dist/index.d.cts", "default": "./dist/index.cjs" }
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     },
     "./operators": {
-      "import": { "types": "./dist/operators/index.d.ts", "default": "./dist/operators/index.js" },
-      "require": { "types": "./dist/operators/index.d.cts", "default": "./dist/operators/index.cjs" }
+      "import": {
+        "types": "./dist/operators/index.d.ts",
+        "default": "./dist/operators/index.js"
+      },
+      "require": {
+        "types": "./dist/operators/index.d.cts",
+        "default": "./dist/operators/index.cjs"
+      }
     }
   },
   "scripts": {
@@ -45,11 +57,22 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/cartant/rxjs-spy.git"
+    "url": "git+https://github.com/hansschenker/rxjs-spy-mcp.git"
   },
-  "homepage": "https://github.com/cartant/rxjs-spy",
+  "homepage": "https://github.com/hansschenker/rxjs-spy-mcp",
   "bugs": {
-    "url": "https://github.com/cartant/rxjs-spy/issues"
+    "url": "https://github.com/hansschenker/rxjs-spy-mcp/issues"
   },
-  "keywords": ["debug", "debugging", "devtools", "mcp", "observable", "rxjs", "spy"]
+  "keywords": [
+    "debug",
+    "debugging",
+    "devtools",
+    "mcp",
+    "observable",
+    "rxjs",
+    "spy"
+  ],
+  "contributors": [
+    "Hans Schenker"
+  ]
 }
