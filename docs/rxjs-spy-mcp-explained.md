@@ -114,6 +114,25 @@ Two details that matter:
 
 Values crossing this boundary are made JSON-safe and size-bounded: long strings are truncated, deep objects cut off, and things like functions or observables become short labels (`"[Observable #12 tag=search]"`). What you see is a faithful sketch, not a live reference.
 
+## What Chrome DevTools MCP actually does here
+
+A common first guess is that the AI reads the spy's console output and comments on it. That's the backup channel, not the mechanism. MCP gives the agent two ways in, and the design favors the first:
+
+**Primary — the agent *calls* the spy; the console is not involved.** MCP's `evaluate_script` tool runs an expression in the page and hands back its return value. The agent literally executes `__RXJS_SPY__.snapshot({ match: "search" })` and receives the JSON tree *as the result of that call*. Asking a question means invoking a method:
+
+| Question | Evaluate call |
+|---|---|
+| "What's running?" | `status()` / `listTags()` |
+| "What did this stream emit?" | `log("search")`, then repeated `logs({ sinceIndex })` polls |
+| "Why did this request die?" | `snapshot({ match: "/^search/" })` — states, errors, stack traces |
+| "Is anything leaking?" | `lifecycles({ olderThanMs: 60000 })` |
+
+The ring buffer behind `logs()` exists precisely so live values can be *pulled* through evaluate calls instead of read off the console.
+
+**Secondary — console reading also works.** MCP has a console-messages tool, and the spy prefixes its lines (`[rxjs-spy] N search.query a`) exactly so they're filterable there. But console output is flat text mixed in with everything else your app logs — fine for a quick human glance, clumsy for a program. Fallback, not mechanism.
+
+**And the answers land in your chat, not in the console.** The full loop: you ask in your IDE's AI chat ("why does the search stream fire twice?") → the agent drives `__RXJS_SPY__` in the browser through MCP evaluate calls → parses the JSON it gets back → explains the finding in the conversation, correlated with your source code. The browser page is just where the evidence lives; the conversation is where the debugging happens.
+
 ## Using it in your own project
 
 Four steps: install the package, start the spy at app startup, tag the pipeline, then read the trace.
