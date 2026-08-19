@@ -12,6 +12,15 @@ export type LogNotification =
   | "subscribe"
   | "unsubscribe";
 
+/** Compact letters used for human-facing output (console, harness panel). */
+export const NOTIFICATION_LETTERS: Record<LogNotification, string> = {
+  complete: "C",
+  error: "E",
+  next: "N",
+  subscribe: "S",
+  unsubscribe: "U",
+};
+
 export interface LogEntry {
   error?: unknown;
   notification: LogNotification;
@@ -94,15 +103,14 @@ export class LogPlugin implements SpyPlugin {
     const { logger } = this.sink_;
     if (logger) {
       const identity =
-        record.tag !== undefined
-          ? `tag = ${record.tag}`
-          : `observableId = ${record.observableId}`;
+        record.tag !== undefined ? record.tag : `#${record.observableId}`;
+      const letter = NOTIFICATION_LETTERS[notification];
       if (notification === "next") {
-        logger.log(`${PREFIX} ${identity}; notification = next`, value);
+        logger.log(`${PREFIX} ${letter} ${identity}`, value);
       } else if (notification === "error") {
-        logger.log(`${PREFIX} ${identity}; notification = error`, error);
+        logger.log(`${PREFIX} ${letter} ${identity}`, error);
       } else {
-        logger.log(`${PREFIX} ${identity}; notification = ${notification}`);
+        logger.log(`${PREFIX} ${letter} ${identity}`);
       }
     }
   }

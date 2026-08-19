@@ -11,7 +11,7 @@ import {
   throwError,
   timer,
 } from "rxjs";
-import { create, isClosed } from "../src/index";
+import { create, isClosed, NOTIFICATION_LETTERS } from "../src/index";
 import type { SnapshotNode } from "../src/index";
 import { tag } from "../src/operators";
 
@@ -183,7 +183,7 @@ setInterval(() => {
           : entry.notification === "error"
             ? ` ${JSON.stringify(entry.error)}`
             : "";
-      return `${String(entry.index).padStart(3)} ${identity.padEnd(16)} ${entry.notification}${detail}`;
+      return `${String(entry.index).padStart(3)} ${NOTIFICATION_LETTERS[entry.notification]} ${identity.padEnd(24)}${detail}`;
     });
     const previous = panelPrimed ? (spyLog.textContent ?? "") : "";
     panelPrimed = true;

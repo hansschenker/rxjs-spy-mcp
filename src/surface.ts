@@ -146,7 +146,7 @@ export function createSurface(spy: Spy): SpySurface {
     }),
     log: guard((match?: string, options?: { console?: boolean }) => ({
       ...spy.log(match === undefined ? undefined : parseMatch(match), options),
-      note: 'Notifications are buffered (poll with logs({ sinceIndex })) and written to the console with prefix "[rxjs-spy]".',
+      note: 'Notifications are buffered (poll with logs({ sinceIndex })) and written to the console with prefix "[rxjs-spy]" and compact letters S/N/E/C/U for subscribe/next/error/complete/unsubscribe.',
     })),
     logs: guard((options: LogsOptions = {}) => ({
       ...spy.logEntries(options.sinceIndex ?? 0, options.limit ?? 100),

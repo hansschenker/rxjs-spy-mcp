@@ -1,4 +1,5 @@
 export { identify } from "./identify";
+export { NOTIFICATION_LETTERS } from "./log-plugin";
 export type { LogEntry, LogNotification } from "./log-plugin";
 export type { PartialLogger } from "./logger";
 export { matches, matchToString, parseMatch } from "./match";

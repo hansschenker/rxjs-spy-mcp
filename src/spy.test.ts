@@ -243,9 +243,9 @@ describe("Spy", () => {
     ]);
     expect(entries[1].value).toBe(42);
     expect(entries[1].tag).toBe("numbers");
-    expect(
-      messages.some((args) => String(args[0]).includes("tag = numbers")),
-    ).toBe(true);
+    const firstArgs = messages.map((args) => String(args[0]));
+    expect(firstArgs).toContain("[rxjs-spy] S numbers");
+    expect(firstArgs).toContain("[rxjs-spy] N numbers");
     expect(spy.unlog(handle.logId)).toBe(1);
     subject.next(43);
     expect(spy.logEntries().nextIndex).toBe(nextIndex);

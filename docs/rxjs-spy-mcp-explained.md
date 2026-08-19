@@ -23,13 +23,15 @@ const results$ = queries$.pipe(
 
 Everything the spy reports is one of five notifications, and they mean exactly what they do in RxJS:
 
-| Notification | Meaning |
-|---|---|
-| `subscribe` | someone started listening to the stream |
-| `next` | the stream emitted a value (shown inline) |
-| `error` | the stream failed (message + stack shown inline) |
-| `complete` | the stream finished normally |
-| `unsubscribe` | the listener was cancelled before the stream finished |
+| Notification | Letter | Meaning |
+|---|---|---|
+| `subscribe` | `S` | someone started listening to the stream |
+| `next` | `N` | the stream emitted a value (shown inline) |
+| `error` | `E` | the stream failed (message + stack shown inline) |
+| `complete` | `C` | the stream finished normally |
+| `unsubscribe` | `U` | the listener was cancelled before the stream finished |
+
+Human-facing output (console lines, the harness panel) uses the compact letters — `[rxjs-spy] N orders.results 42` means "the `orders.results` stream emitted `42`". The JSON returned by `logs()` keeps the full words so agents never have to guess.
 
 Two patterns are worth recognizing on sight:
 
