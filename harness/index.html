@@ -1,158 +1,51 @@
 <!doctype html>
-<html>
-<head>
-    <title>harness</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>rxjs-spy harness</title>
     <style>
-
-        body {
-            font-family: sans-serif;
-        }
-
-        .controls {
-            display: flex;
-            flex-direction: column;
-            left: 50%;
-            position: absolute;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            width: 300px;
-        }
-
-        .control {
-            display: flex;
-            flex-direction: row;
-            justify-content: flex-end;
-        }
-
-        .desc {
-            flex: 1;
-        }
-
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 2rem auto;
+        max-width: 48rem;
+        padding: 0 1rem;
+      }
+      button {
+        font-size: 1rem;
+        margin: 0 0.5rem 0.5rem 0;
+        padding: 0.5rem 1rem;
+      }
+      code {
+        background: #f0f0f0;
+        border-radius: 3px;
+        padding: 0.1rem 0.3rem;
+      }
+      pre {
+        background: #1e1e1e;
+        border-radius: 6px;
+        color: #d4d4d4;
+        max-height: 24rem;
+        overflow: auto;
+        padding: 1rem;
+      }
     </style>
-</head>
-<body>
-    <div class="controls">
-        <div class="control">
-            <span class="desc">People</span>
-            <button onclick="startPeople()">&#9658;</button>
-            <button onclick="stop()">&#9724;</button>
-        </div>
-        <div class="control">
-            <span class="desc">Many (without source maps)</span>
-            <button onclick="startMany(false)">&#9658;</button>
-            <button onclick="stop()">&#9724;</button>
-        </div>
-        <div class="control">
-            <span class="desc">Many (with source maps)</span>
-            <button onclick="startMany(true)">&#9658;</button>
-            <button onclick="stop()">&#9724;</button>
-        </div>
+  </head>
+  <body>
+    <h1>rxjs-spy harness</h1>
+    <p>
+      The spy is active and its MCP surface is installed as
+      <code>__RXJS_SPY__</code>. Drive it with Chrome DevTools MCP evaluate
+      tooling — start with <code>__RXJS_SPY__.help()</code>, then
+      <code>status()</code>, <code>snapshot({ match: "clock" })</code>, or
+      <code>log("search")</code> + <code>logs({ sinceIndex: 0 })</code>.
+    </p>
+    <div>
+      <button id="clock">Start clock (tag "clock")</button>
+      <button id="search">Simulate live search (tags "search*")</button>
+      <button id="failing">Start failing stream (tag "failing")</button>
     </div>
-    <script src="../node_modules/rxjs/bundles/rxjs.umd.js"></script>
-    <script src="../dist/bundles/rxjs-spy.umd.js"></script>
-    <script>
-
-        const { rxjs, rxjsSpy } = window;
-
-        function startPeople() {
-
-            if (window.subscription) {
-                stop();
-            }
-
-            const { interval, Subscriber, Subscription } = rxjs;
-            const { map } = rxjs.operators;
-            const { create } = rxjsSpy;
-            const { tag } = rxjsSpy.operators;
-
-            const spy = create({
-                keptDuration: 10e3,
-                sourceMaps: true
-            });
-            window.subscription = new Subscription(() => spy.teardown());
-
-            const source = interval(2000).pipe(tag("interval"));
-            const subscriber = Subscriber.create(
-                value => {},
-                error => {},
-                () => {}
-            );
-            window.subscription.add(source.subscribe(subscriber));
-
-            const people = source.pipe(
-                map(value => {
-                    const names = ["alice", "bob"];
-                    return names[value % names.length];
-                }),
-                tag("people")
-            );
-            window.subscription.add(people.subscribe());
-        }
-
-        function startMany(sourceMaps) {
-
-            const { asapScheduler, concat, merge, NEVER, of, Subscriber, Subscription } = rxjs;
-            const { map } = rxjs.operators;
-            const { create } = rxjsSpy;
-            const { tag } = rxjsSpy.operators;
-
-            if (window.subscription) {
-                stop();
-            }
-            const spy = create({
-                keptDuration: 0,
-                sourceMaps
-            });
-            window.subscription = new Subscription(() => spy.teardown());
-
-            // https://bugify.cartant.com/issues/4075
-
-            const source = () => concat(
-                of(1, 2, 3, 4, 5).pipe(
-                    tag("1"),
-                    tag("1.1"),
-                    tag("1.1.1"),
-                    tag("1.1.1.1")
-                ),
-                of(1, 2, 3, 4, 5, asapScheduler).pipe(
-                    tag("2"),
-                    tag("2.2"),
-                    tag("2.2.2"),
-                    tag("2.2.2.2")
-                ),
-                NEVER.pipe(
-                    tag("3"),
-                    tag("3.3"),
-                    tag("3.3.3"),
-                    tag("3.3.3.3")
-                )
-            ).pipe(
-                tag("4"),
-                tag("4.4"),
-                tag("4.4.4"),
-                tag("4.4.4.4")
-            );
-
-            const iters = 100;
-            const all = [];
-            for (let i = 0; i < iters; ++i) {
-                all.push(source());
-            }
-
-            const root = merge(...all).pipe(tag("5"));
-            window.subscription.add(root.subscribe());
-        }
-
-        function stop() {
-
-            if (window.subscription) {
-                window.subscription.unsubscribe();
-                window.subscription = null;
-            }
-        }
-
-    </script>
-</body>
+    <pre id="output"></pre>
+    <script type="module" src="./main.ts"></script>
+  </body>
 </html>

@@ -1,23 +1,21 @@
 {
   "compilerOptions": {
-    "declaration": false,
-    "importHelpers": false,
-    "lib": ["dom", "es2017"],
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "noEmitHelpers": false,
-    "noImplicitAny": true,
-    "outDir": "build",
-    "removeComments": true,
-    "skipLibCheck": true,
-    "sourceMap": false,
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2021", "DOM"],
     "strict": true,
-    "strictBindCallApply": false,
-    "suppressImplicitAnyIndexErrors": true,
-    "target": "es5"
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "useDefineForClassFields": true,
+    "types": []
   },
-  "exclude": [],
-  "include": [
-    "source/**/*.ts"
-  ]
+  "include": ["src", "harness", "tsup.config.ts", "vitest.config.ts"]
 }

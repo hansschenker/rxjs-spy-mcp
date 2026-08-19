@@ -1,114 +1,55 @@
 {
+  "name": "rxjs-spy",
+  "version": "9.0.0-dev.0",
+  "description": "A debugging library for RxJS with an MCP-friendly in-page surface",
   "author": "Nicholas Jamieson <nicholas@cartant.com>",
-  "bugs": {
-    "url": "https://github.com/cartant/rxjs-spy/issues"
-  },
-  "dependencies": {
-    "@types/circular-json": "^0.4.0",
-    "@types/stacktrace-js": "^0.0.33",
-    "circular-json": "^0.5.0",
-    "error-stack-parser": "^2.0.1",
-    "rxjs-report-usage": "^1.0.4",
-    "stacktrace-gps": "^3.0.2"
-  },
-  "description": "A debugging library for RxJS",
-  "devDependencies": {
-    "@babel/core": "^7.11.1",
-    "@babel/plugin-proposal-class-properties": "^7.10.4",
-    "@babel/preset-env": "^7.11.0",
-    "@babel/preset-typescript": "^7.10.4",
-    "@cartant/tslint-config": "^2.0.0",
-    "@cartant/tslint-config-etc": "^2.0.0",
-    "@cartant/tslint-config-rxjs": "^2.0.0",
-    "@rollup/plugin-babel": "^5.2.0",
-    "@rollup/plugin-commonjs": "^15.0.0",
-    "@rollup/plugin-json": "^4.1.0",
-    "@rollup/plugin-node-resolve": "^9.0.0",
-    "@rollup/plugin-replace": "^2.3.3",
-    "@types/chai": "^4.0.0",
-    "@types/mocha": "^8.0.0",
-    "@types/node": "^15.0.0",
-    "@types/sinon": "^10.0.0",
-    "chai": "^4.0.0",
-    "cpy-cli": "^3.0.0",
-    "eslint": "^7.3.0",
-    "karma": "^5.0.0",
-    "karma-chrome-launcher": "^3.1.0",
-    "karma-mocha": "^2.0.0",
-    "karma-spec-reporter": "^0.0.32",
-    "karma-webpack": "^4.0.2",
-    "mkdirp": "^1.0.0",
-    "mocha": "^8.0.0",
-    "puppeteer": "^9.0.0",
-    "rimraf": "^3.0.0",
-    "rollup": "^2.26.0",
-    "rxjs": "^7.0.0",
-    "rxjs-tslint-rules": "^4.0.0",
-    "sinon": "^10.0.0",
-    "superstatic": "^6.0.0",
-    "ts-loader": "^8.0.0",
-    "tslib": "^2.0.0",
-    "tslint": "^6.0.0",
-    "tslint-etc": "^1.5.2",
-    "typescript": "~4.2.4",
-    "webpack": "^4.0.0",
-    "webpack-cli": "^3.0.0",
-    "webpack-rxjs-externals": "^2.0.0"
-  },
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.cts",
   "exports": {
     ".": {
-      "node": "./dist/cjs/index.js",
-      "default": "./dist/esm/index.js"
+      "import": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+      "require": { "types": "./dist/index.d.cts", "default": "./dist/index.cjs" }
     },
     "./operators": {
-      "node": "./dist/cjs/operators/index.js",
-      "default": "./dist/esm/operators/index.js"
+      "import": { "types": "./dist/operators/index.d.ts", "default": "./dist/operators/index.js" },
+      "require": { "types": "./dist/operators/index.d.cts", "default": "./dist/operators/index.cjs" }
     }
   },
-  "homepage": "https://github.com/cartant/rxjs-spy",
-  "keywords": [
-    "debug",
-    "debugging",
-    "log",
-    "logging",
-    "observable",
-    "rxjs",
-    "spy"
-  ],
-  "license": "MIT",
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
-  "name": "rxjs-spy",
-  "optionalDependencies": {},
-  "peerDependencies": {
-    "rxjs": "^7.0.0"
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write \"src/**/*.ts\" \"harness/**/*.ts\" \"*.config.ts\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "harness": "vite --open /harness/index.html"
   },
-  "private": true,
-  "publishConfig": {
-    "tag": "latest"
+  "peerDependencies": {
+    "rxjs": "^7.8.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.9.0",
+    "eslint": "^9.9.0",
+    "prettier": "^3.3.0",
+    "rxjs": "7.8.2",
+    "tsup": "^8.2.0",
+    "typescript": "^5.5.0",
+    "typescript-eslint": "^8.0.0",
+    "vite": "^6.0.0",
+    "vitest": "^3.0.0"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/cartant/rxjs-spy.git"
   },
-  "resolutions": {},
-  "scripts": {
-    "dist": "yarn run dist:build && yarn run dist:copy",
-    "dist:build": "yarn run dist:clean && tsc -p tsconfig-dist.json && node scripts/version.js && webpack --config webpack.config.js && webpack --config webpack.config.js --env.production && yarn run dist:rollup",
-    "dist:clean": "rimraf dist",
-    "dist:copy": "node scripts/pack.js && cpy CHANGELOG.md LICENSE README.md dist/",
-    "dist:rollup": "yarn rollup -c rollup.config.js && yarn rollup -c rollup.config.operators.js",
-    "harness": "superstatic",
-    "lint": "tslint --project tsconfig.json source/**/*.ts",
-    "test": "yarn run lint && yarn run test:build && yarn run test:karma && yarn run test:mocha",
-    "test:build": "yarn run test:clean && tsc -p tsconfig.json && node scripts/version.js",
-    "test:clean": "rimraf build",
-    "test:karma": "karma start --single-run",
-    "test:mocha": "mocha build/**/*-spec.js",
-    "test:watch": "karma start"
+  "homepage": "https://github.com/cartant/rxjs-spy",
+  "bugs": {
+    "url": "https://github.com/cartant/rxjs-spy/issues"
   },
-  "sideEffects": false,
-  "types": "./dist/cjs/index.d.ts",
-  "unpkg": "./dist/bundles/rxjs-spy.min.umd.js",
-  "version": "8.0.2"
+  "keywords": ["debug", "debugging", "devtools", "mcp", "observable", "rxjs", "spy"]
 }
