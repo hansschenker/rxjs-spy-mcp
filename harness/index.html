@@ -8,13 +8,13 @@
       body {
         font-family: system-ui, sans-serif;
         margin: 2rem auto;
-        max-width: 48rem;
+        max-width: 72rem;
         padding: 0 1rem;
       }
       button {
-        font-size: 1rem;
+        font-size: 0.95rem;
         margin: 0 0.5rem 0.5rem 0;
-        padding: 0.5rem 1rem;
+        padding: 0.4rem 0.9rem;
       }
       code {
         background: #f0f0f0;
@@ -25,9 +25,35 @@
         background: #1e1e1e;
         border-radius: 6px;
         color: #d4d4d4;
-        max-height: 24rem;
+        font-size: 0.8rem;
+        margin-top: 0.5rem;
+        max-height: 22rem;
+        min-height: 6rem;
         overflow: auto;
-        padding: 1rem;
+        padding: 0.8rem;
+        white-space: pre;
+      }
+      .columns {
+        display: grid;
+        gap: 1.5rem;
+        grid-template-columns: 1fr 1fr;
+      }
+      @media (max-width: 900px) {
+        .columns {
+          grid-template-columns: 1fr;
+        }
+      }
+      h2 {
+        font-size: 1rem;
+        margin: 1rem 0 0.25rem;
+      }
+      #spy-status {
+        color: #666;
+        font-size: 0.85rem;
+      }
+      #spy-log .error,
+      .errored {
+        color: #f48771;
       }
     </style>
   </head>
@@ -36,16 +62,31 @@
     <p>
       The spy is active and its MCP surface is installed as
       <code>__RXJS_SPY__</code>. Drive it with Chrome DevTools MCP evaluate
-      tooling — start with <code>__RXJS_SPY__.help()</code>, then
-      <code>status()</code>, <code>snapshot({ match: "clock" })</code>, or
-      <code>log("search")</code> + <code>logs({ sinceIndex: 0 })</code>.
+      tooling — start with <code>__RXJS_SPY__.help()</code>. The right column
+      mirrors the same data an agent reads.
     </p>
     <div>
       <button id="clock">Start clock (tag "clock")</button>
       <button id="search">Simulate live search (tags "search*")</button>
       <button id="failing">Start failing stream (tag "failing")</button>
     </div>
-    <pre id="output"></pre>
+    <div class="columns">
+      <section>
+        <h2>App output</h2>
+        <pre id="output"></pre>
+      </section>
+      <section>
+        <h2>Debugger output (__RXJS_SPY__)</h2>
+        <div id="spy-status">spy status…</div>
+        <div>
+          <button id="spy-log-start">Log tagged streams</button>
+          <button id="spy-unlog">Unlog all</button>
+          <button id="spy-snapshot-take">Take snapshot</button>
+        </div>
+        <pre id="spy-log">(no log entries yet — click "Log tagged streams" or call __RXJS_SPY__.log(...) via MCP)</pre>
+        <pre id="spy-snapshot">(no snapshot yet — click "Take snapshot" or call __RXJS_SPY__.snapshot(...))</pre>
+      </section>
+    </div>
     <script type="module" src="./main.ts"></script>
   </body>
 </html>
