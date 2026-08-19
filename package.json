@@ -39,7 +39,8 @@
     "format": "prettier --write \"src/**/*.ts\" \"harness/**/*.ts\" \"*.config.ts\"",
     "test": "vitest run",
     "test:watch": "vitest",
-    "harness": "vite --open /harness/index.html"
+    "harness": "vite --open /harness/index.html",
+    "prepare": "tsup"
   },
   "peerDependencies": {
     "rxjs": "^7.8.0"

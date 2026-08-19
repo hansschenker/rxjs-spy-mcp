@@ -58,7 +58,7 @@ npm run build       # tsup -> dist/ (ESM + CJS + .d.ts)
 npm run harness     # Vite dev page with tagged demo streams to point an MCP agent at
 ```
 
-See `CLAUDE.md` for the architecture map, and [docs/mcp-debug-session.md](docs/mcp-debug-session.md) for a real debugging session — a flaky-API typeahead pipeline traced end to end through the MCP surface, including two bugs the session caught.
+See `CLAUDE.md` for the architecture map. New to the output? [docs/rxjs-spy-mcp-explained.md](docs/rxjs-spy-mcp-explained.md) explains the basic concepts (tags, the five notifications, records, the snapshot tree, the surface methods). For a real debugging session — a flaky-API typeahead pipeline traced end to end, including two bugs the session caught — see [docs/mcp-debug-session.md](docs/mcp-debug-session.md).
 
 ## Credit & license
 
