@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Typeahead + flaky API — rxjs-spy-mcp</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 2rem auto;
+        max-width: 44rem;
+        padding: 0 1rem;
+      }
+      p {
+        color: #444;
+      }
+      code {
+        background: #f0f0f0;
+        border-radius: 3px;
+        padding: 0.1rem 0.3rem;
+      }
+      #query {
+        font-size: 1.1rem;
+        padding: 0.5rem 0.75rem;
+        width: 60%;
+      }
+      button {
+        font-size: 1rem;
+        margin-left: 0.5rem;
+        padding: 0.5rem 1rem;
+      }
+      h2 {
+        font-size: 0.95rem;
+        margin: 1.25rem 0 0.25rem;
+      }
+      pre {
+        background: #1e1e1e;
+        border-radius: 6px;
+        color: #d4d4d4;
+        font-size: 0.85rem;
+        margin: 0.25rem 0 0;
+        max-height: 16rem;
+        min-height: 4rem;
+        overflow: auto;
+        padding: 0.8rem;
+        white-space: pre;
+      }
+      footer {
+        color: #666;
+        font-size: 0.85rem;
+        margin-top: 1.25rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Typeahead + flaky API</h1>
+    <p>
+      Every keystroke flows through <code>debounceTime(200)</code> into a fake
+      API that fails twice and succeeds on the third attempt, wrapped in
+      <code>retry</code>. Typing again mid-request makes
+      <code>switchMap</code> cancel the in-flight saga. The spy tags:
+      <code>typeahead.keystrokes → typeahead.query → typeahead.api.request →
+      typeahead.results</code>.
+    </p>
+    <div>
+      <input id="query" type="search" placeholder="Type to search…" autocomplete="off" />
+      <button id="demo">Run scripted demo</button>
+      <button id="clear">Clear</button>
+    </div>
+    <h2>Results</h2>
+    <pre id="output">(type above or run the scripted demo)</pre>
+    <h2>Spy trace — S subscribe · N next · E error · C complete · U unsubscribe</h2>
+    <pre id="trace">(waiting for notifications)</pre>
+    <footer>
+      The same data is queryable in the DevTools console:
+      <code>__RXJS_SPY__.snapshot({ match: "/^typeahead/" })</code>,
+      <code>__RXJS_SPY__.lifecycles()</code>, or <code>__RXJS_SPY__.help()</code>
+      for everything else.
+    </footer>
+    <script type="module" src="./typeahead.ts"></script>
+  </body>
+</html>
