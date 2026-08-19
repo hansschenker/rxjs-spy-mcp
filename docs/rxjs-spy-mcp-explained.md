@@ -36,7 +36,7 @@ flowchart LR
         surface["window.__RXJS_SPY__ - JSON surface"]
     end
     subgraph readers["Three ways to read it"]
-        agent["AI assistant in IDE chat<br/>via Chrome DevTools MCP evaluate"]
+        agent["your AI chat - terminal or IDE<br/>via Chrome DevTools MCP evaluate"]
         console["DevTools console<br/>rxjs-spy prefixed lines + queries"]
         panel["mountDebugPanel()<br/>in-page overlay"]
     end
@@ -57,7 +57,7 @@ And what one AI-assisted debugging session looks like — you talk in prose, the
 sequenceDiagram
     autonumber
     actor Dev as Developer
-    participant Agent as AI assistant - IDE chat
+    participant Agent as AI assistant - your chat
     participant MCP as Chrome DevTools MCP
     participant Surface as __RXJS_SPY__ in page
     participant App as App streams
@@ -83,6 +83,25 @@ sequenceDiagram
     end
     Agent-->>Dev: finding, correlated with your source code
 ```
+
+### Anatomy of one call
+
+The label "AI assistant in your chat via Chrome DevTools MCP evaluate" packs four things into one line:
+
+- **your chat** — wherever you talk to your coding assistant: a Claude Code terminal session, VS Code's Copilot panel, Cursor. A terminal is not an IDE, and it does not need to be — all that matters is that this is where you type.
+- **AI assistant** — the model answering there.
+- **Chrome DevTools MCP** — a small helper program (an MCP server) on your machine that attaches to your running Chrome, the way DevTools does. The assistant uses it as a tool.
+- **evaluate** — its key operation: *"run this JavaScript expression inside the page and hand back the result."*
+
+One question, end to end:
+
+1. **You** (in chat): *"which streams are running?"*
+2. **Assistant** calls its tool: `evaluate("__RXJS_SPY__.listTags()")`
+3. **The MCP server** forwards the expression into your Chrome tab, where the page executes it
+4. **The page** returns plain JSON — `{ tags: [{ tag: "orders", active: 1, totalNext: 12 }] }` — back through the same pipe
+5. **Assistant** reads the JSON and answers in chat: *"one stream, `orders`, active, 12 values so far."*
+
+You did step 1 only — no DevTools opened, no JSON read, no command typed. The assistant repeats steps 2–4 with different expressions (`snapshot(...)`, `logs({ sinceIndex })`, `lifecycles()`) until it has enough evidence, then explains in prose.
 
 (A standalone version with key points lives in [rxjs-spy-mcp-workflow.html](rxjs-spy-mcp-workflow.html) — open it in any browser.)
 
@@ -217,7 +236,7 @@ The ring buffer behind `logs()` exists precisely so live values can be *pulled* 
 
 **Secondary — console reading also works.** MCP has a console-messages tool, and the spy prefixes its lines (`[rxjs-spy] N search.query a`) exactly so they're filterable there. But console output is flat text mixed in with everything else your app logs — fine for a quick human glance, clumsy for a program. Fallback, not mechanism.
 
-**And the answers land in your chat, not in the console.** The full loop: you ask in your IDE's AI chat ("why does the search stream fire twice?") → the agent drives `__RXJS_SPY__` in the browser through MCP evaluate calls → parses the JSON it gets back → explains the finding in the conversation, correlated with your source code. The browser page is just where the evidence lives; the conversation is where the debugging happens.
+**And the answers land in your chat, not in the console.** The full loop: you ask in your AI chat — terminal or IDE ("why does the search stream fire twice?") → the agent drives `__RXJS_SPY__` in the browser through MCP evaluate calls → parses the JSON it gets back → explains the finding in the conversation, correlated with your source code. The browser page is just where the evidence lives; the conversation is where the debugging happens.
 
 ## Using it in your own project
 

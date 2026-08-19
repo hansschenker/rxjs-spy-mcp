@@ -60,7 +60,7 @@ flowchart LR
         surface["window.__RXJS_SPY__ - JSON surface"]
     end
     subgraph readers["Three ways to read it"]
-        agent["AI assistant in IDE chat<br/>via Chrome DevTools MCP evaluate"]
+        agent["your AI chat - terminal or IDE<br/>via Chrome DevTools MCP evaluate"]
         console["DevTools console<br/>rxjs-spy prefixed lines + queries"]
         panel["mountDebugPanel()<br/>in-page overlay"]
     end
@@ -89,7 +89,7 @@ flowchart LR
 sequenceDiagram
     autonumber
     actor Dev as Developer
-    participant Agent as AI assistant - IDE chat
+    participant Agent as AI assistant - your chat
     participant MCP as Chrome DevTools MCP
     participant Surface as __RXJS_SPY__ in page
     participant App as App streams

@@ -22,7 +22,7 @@ const results$ = queries$.pipe(
 );
 ```
 
-Then, in your IDE's AI chat with Chrome DevTools MCP connected:
+Then, in your AI chat — Claude Code terminal or IDE panel — with Chrome DevTools MCP connected:
 
 > "Connect to my app's tab and debug the `search` stream — show me its subscription graph and log its emitted values."
 
