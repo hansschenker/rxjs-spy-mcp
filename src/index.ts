@@ -8,7 +8,7 @@ export { hide, tag } from "./operators";
 export type { SpyPlugin } from "./plugin";
 export { isClosed } from "./record";
 export type { SubscriptionRecord } from "./record";
-export { toSerializable } from "./serialize";
+export { DEFAULT_REDACT_KEYS, toSerializable } from "./serialize";
 export type { SerializeOptions } from "./serialize";
 export type {
   SnapshotNode,

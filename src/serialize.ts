@@ -7,7 +7,29 @@ export interface SerializeOptions {
   maxDepth?: number;
   maxProperties?: number;
   maxStringLength?: number;
+  /**
+   * Property keys to redact (case-insensitive substring match, so "token"
+   * also catches "accessToken"). Defaults to DEFAULT_REDACT_KEYS; pass []
+   * to disable redaction.
+   */
+  redactKeys?: readonly string[];
 }
+
+/**
+ * Keys whose values are redacted by default. Spy output is designed to be
+ * read by AI agents over an MCP boundary, so secrets must never leave the
+ * page in traces. Ported from the rxjs-spy-mcp-old prototype.
+ */
+export const DEFAULT_REDACT_KEYS: readonly string[] = [
+  "apikey",
+  "authorization",
+  "cookie",
+  "credential",
+  "passphrase",
+  "password",
+  "secret",
+  "token",
+];
 
 /**
  * Converts an arbitrary runtime value into a JSON-safe representation with
@@ -24,6 +46,13 @@ export function toSerializable(
   const maxDepth = options.maxDepth ?? 3;
   const maxProperties = options.maxProperties ?? 20;
   const maxStringLength = options.maxStringLength ?? 200;
+  const redactKeys = (options.redactKeys ?? DEFAULT_REDACT_KEYS).map((key) =>
+    key.toLowerCase(),
+  );
+  const shouldRedact = (key: string): boolean => {
+    const lowered = key.toLowerCase();
+    return redactKeys.some((redactKey) => lowered.includes(redactKey));
+  };
   const seen = new WeakSet<object>();
 
   const serialize = (input: unknown, depth: number): unknown => {
@@ -103,7 +132,9 @@ export function toSerializable(
       const entries = Object.entries(target as Record<string, unknown>);
       const result: Record<string, unknown> = {};
       for (const [key, item] of entries.slice(0, maxProperties)) {
-        result[key] = serialize(item, depth + 1);
+        result[key] = shouldRedact(key)
+          ? "[Redacted]"
+          : serialize(item, depth + 1);
       }
       if (entries.length > maxProperties) {
         result["..."] = `+${entries.length - maxProperties} more properties`;

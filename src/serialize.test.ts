@@ -70,6 +70,37 @@ describe("toSerializable", () => {
     expect(toSerializable(source)).toMatch(/^\[Observable #\d+ tag=nums\]$/);
   });
 
+  it("redacts sensitive keys by default (case-insensitive substring)", () => {
+    const result = toSerializable({
+      ApiToken: "t",
+      nested: { Authorization: "Bearer x", ok: 1 },
+      password: "hunter2",
+      username: "hans",
+    });
+    expect(result).toEqual({
+      ApiToken: "[Redacted]",
+      nested: { Authorization: "[Redacted]", ok: 1 },
+      password: "[Redacted]",
+      username: "hans",
+    });
+  });
+
+  it("redacts keys, not values", () => {
+    expect(toSerializable({ note: "my password is safe here" })).toEqual({
+      note: "my password is safe here",
+    });
+  });
+
+  it("supports custom redact keys and opt-out", () => {
+    const custom = toSerializable(
+      { password: "x", ssn: "123" },
+      { redactKeys: ["ssn"] },
+    );
+    expect(custom).toEqual({ password: "x", ssn: "[Redacted]" });
+    const off = toSerializable({ password: "x" }, { redactKeys: [] });
+    expect(off).toEqual({ password: "x" });
+  });
+
   it("always produces JSON.stringify-safe output", () => {
     const nasty: Record<string, unknown> = {
       date: new Date(0),
