@@ -19,6 +19,73 @@ const results$ = queries$.pipe(
 );
 ```
 
+## The workflow, visualized
+
+Where the data flows — `create()` patches `subscribe` so the spy sees *every* subscription, all state lives in the page, and one JSON surface feeds all three consumers:
+
+```mermaid
+flowchart LR
+    subgraph app["Your app - dev build"]
+        create["create() once at startup"]
+        code["RxJS streams, named with tag('orders')"]
+    end
+    subgraph spy["rxjs-spy-mcp, inside the page"]
+        patch["patched Observable.prototype.subscribe"]
+        records["subscription records + graph"]
+        buffer["log ring buffer"]
+        surface["window.__RXJS_SPY__ - JSON surface"]
+    end
+    subgraph readers["Three ways to read it"]
+        agent["AI assistant in IDE chat<br/>via Chrome DevTools MCP evaluate"]
+        console["DevTools console<br/>rxjs-spy prefixed lines + queries"]
+        panel["mountDebugPanel()<br/>in-page overlay"]
+    end
+    create --> patch
+    code -- "every subscribe / next / error /<br/>complete / unsubscribe" --> patch
+    patch --> records
+    records --> buffer
+    records --> surface
+    buffer --> surface
+    surface --> agent
+    surface --> console
+    surface --> panel
+```
+
+And what one AI-assisted debugging session looks like — you talk in prose, the agent talks JSON, the answer lands in your chat:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Dev as Developer
+    participant Agent as AI assistant - IDE chat
+    participant MCP as Chrome DevTools MCP
+    participant Surface as __RXJS_SPY__ in page
+    participant App as App streams
+
+    Note over Dev,App: Setup - once, in the dev build
+    App->>Surface: create() patches subscribe and installs the surface, tag() names streams
+
+    Note over Dev,App: Session - you talk in prose, the agent talks JSON
+    Dev->>Agent: "Debug the orders stream - why does it fire twice?"
+    Agent->>MCP: evaluate __RXJS_SPY__.help()
+    MCP->>Surface: run in page
+    Surface-->>MCP: method list as JSON
+    MCP-->>Agent: result
+    Note over Agent,Surface: every later call flows through MCP the same way
+    Agent->>Surface: snapshot({ match: "orders" })
+    Surface-->>Agent: graph - states, latest values, subscribe-site stacks
+    Agent->>Surface: log("orders")
+    Dev->>App: clicks around the app
+    App->>Surface: notifications recorded into the ring buffer
+    loop until enough evidence
+        Agent->>Surface: logs({ sinceIndex })
+        Surface-->>Agent: only the new entries
+    end
+    Agent-->>Dev: finding, correlated with your source code
+```
+
+(A standalone version with key points lives in [rxjs-spy-mcp-workflow.html](rxjs-spy-mcp-workflow.html) — open it in any browser.)
+
 ## The five events
 
 Everything the spy reports is one of five notifications, and they mean exactly what they do in RxJS:
@@ -41,7 +108,26 @@ S N N ...   E U    errored, then torn down
 S N ...       U    cancelled mid-flight (switchMap, takeUntil, .unsubscribe())
 ```
 
-`U` always closes the lifecycle — the spy emits it even after `C`/`E`, because RxJS always tears down after a terminal notification. (`C` after `E` never occurs; they are mutually exclusive terminals.) This gives you two powerful reading rules:
+`U` always closes the lifecycle — the spy emits it even after `C`/`E`, because RxJS always tears down after a terminal notification. (`C` after `E` never occurs; they are mutually exclusive terminals.) As a state machine:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Active: S subscribe
+    Active --> Active: N next - latest values kept
+    Active --> Completed: C complete
+    Active --> Errored: E error
+    Active --> TornDown: U unsubscribe - cancelled
+    Completed --> TornDown: U automatic teardown
+    Errored --> TornDown: U automatic teardown
+    TornDown --> [*]: flushed after keptDuration
+    note right of Active
+        An S without its U is a live
+        subscription - or a leak.
+        lifecycles() finds these.
+    end note
+```
+
+This gives you two powerful reading rules:
 
 - **`E` followed by another `S` on the same tag = a retry.** `retry()` works by resubscribing, so each attempt shows as its own `S`...`E U` group.
 - **An `S` with no matching `U` = a live subscription.** Fine while the stream should be running; a leak if it should not.
@@ -112,7 +198,7 @@ Two details that matter:
 - **`logs()` is a ring buffer you poll.** Every recorded notification gets an increasing index. You call `logs({ sinceIndex: 0 })`, note the returned `nextIndex`, and pass it back next time — you only ever get new entries. This is how an agent "watches live" without scraping the console.
 - **`match` is a string with three forms:** a tag (`"search"`), a regex (`"/^search/"` — matches `search`, `search.query`, `search.results`...), or an observable/record id number.
 
-Values crossing this boundary are made JSON-safe and size-bounded: long strings are truncated, deep objects cut off, and things like functions or observables become short labels (`"[Observable #12 tag=search]"`). What you see is a faithful sketch, not a live reference.
+Values crossing this boundary are made JSON-safe and size-bounded: long strings are truncated, deep objects cut off, and things like functions or observables become short labels (`"[Observable #12 tag=search]"`). What you see is a faithful sketch, not a live reference. Properties whose keys look sensitive — `password`, `token`, `secret`, `authorization`, `cookie`, `apiKey`, and the like (substring match, so `accessToken` counts) — are **redacted by default**, since traces are meant to be read by an AI agent; override per call with `serialize: { redactKeys: [...] }` or disable with `redactKeys: []`.
 
 ## What Chrome DevTools MCP actually does here
 
@@ -209,6 +295,22 @@ __RXJS_SPY__.unlog()                     // stop recording
 Or hand it to your AI assistant with Chrome DevTools MCP connected: *"Connect to my app's tab and debug the `orders` stream — snapshot its subscription graph and log its emitted values."* The agent runs the same calls and reads the JSON back.
 
 For programmatic use (e.g. piping the trace into your own tooling), `create()` returns a `Spy` with the same capabilities: `spy.log(match, { console: false })`, `spy.logEntries(sinceIndex)`, `spy.snapshot()`, and `spy.teardown()` to stop spying and restore RxJS untouched.
+
+### Optional: an in-page panel (no DevTools, no agent)
+
+If you want to *see* the trace without opening the console, mount the built-in panel — a small self-contained overlay (status line + live S/N/E/C/U trace, inline styles, ~3 KB) that polls the spy inside your own page:
+
+```ts
+import { create } from "rxjs-spy";
+import { mountDebugPanel } from "rxjs-spy/panel";
+
+const spy = create();
+if (import.meta.env.DEV) {
+  mountDebugPanel(spy); // floating bottom-right; returns an unmount function
+}
+```
+
+Options: `container` renders it into your own element instead of floating, `startLog: false` if you manage logs yourself, `console: true` to mirror lines to the console too, `intervalMs` for the poll rate. It ships as a separate `rxjs-spy/panel` entry, so production bundles never include it unless imported.
 
 ## Where to see it
 

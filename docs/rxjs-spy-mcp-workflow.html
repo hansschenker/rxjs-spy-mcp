@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>rxjs-spy-mcp — the workflow, visualized</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, system-ui, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; text-align: center; }
+        h2 { color: #333; margin: 32px 0 8px; }
+        p.lead { color: #555; max-width: 60rem; }
+        .diagram-container {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+        .key-points {
+            background: white;
+            border-radius: 8px;
+            padding: 20px 30px;
+            margin-top: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        code {
+            background: #f0f0f0;
+            border-radius: 3px;
+            padding: 0.1rem 0.3rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>rxjs-spy-mcp — the workflow, visualized</h1>
+    <p class="lead">
+        Three views of the same system: <strong>what the pieces are</strong> (architecture),
+        <strong>what a debugging session looks like</strong> (sequence), and
+        <strong>what one subscription goes through</strong> (lifecycle).
+    </p>
+
+    <h2>1 · Architecture: where the data flows</h2>
+    <div class="diagram-container">
+        <div class="mermaid">
+flowchart LR
+    subgraph app["Your app - dev build"]
+        create["create() once at startup"]
+        code["RxJS streams, named with tag('orders')"]
+    end
+    subgraph spy["rxjs-spy-mcp, inside the page"]
+        patch["patched Observable.prototype.subscribe"]
+        records["subscription records + graph"]
+        buffer["log ring buffer"]
+        surface["window.__RXJS_SPY__ - JSON surface"]
+    end
+    subgraph readers["Three ways to read it"]
+        agent["AI assistant in IDE chat<br/>via Chrome DevTools MCP evaluate"]
+        console["DevTools console<br/>rxjs-spy prefixed lines + queries"]
+        panel["mountDebugPanel()<br/>in-page overlay"]
+    end
+    create --> patch
+    code -- "every subscribe / next / error /<br/>complete / unsubscribe" --> patch
+    patch --> records
+    records --> buffer
+    records --> surface
+    buffer --> surface
+    surface --> agent
+    surface --> console
+    surface --> panel
+        </div>
+    </div>
+    <div class="key-points">
+        <ul>
+            <li><code>create()</code> patches <code>subscribe</code>, so the spy sees <em>every</em> subscription — <code>tag()</code> only adds names.</li>
+            <li>All state lives in the page: records (with the graph), and a ring buffer of log entries.</li>
+            <li>The single JSON surface feeds all three consumers; nothing is console-scraping.</li>
+        </ul>
+    </div>
+
+    <h2>2 · A debugging session: who talks to whom</h2>
+    <div class="diagram-container">
+        <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor Dev as Developer
+    participant Agent as AI assistant - IDE chat
+    participant MCP as Chrome DevTools MCP
+    participant Surface as __RXJS_SPY__ in page
+    participant App as App streams
+
+    Note over Dev,App: Setup - once, in the dev build
+    App->>Surface: create() patches subscribe and installs the surface, tag() names streams
+
+    Note over Dev,App: Session - you talk in prose, the agent talks JSON
+    Dev->>Agent: "Debug the orders stream - why does it fire twice?"
+    Agent->>MCP: evaluate __RXJS_SPY__.help()
+    MCP->>Surface: run in page
+    Surface-->>MCP: method list as JSON
+    MCP-->>Agent: result
+    Note over Agent,Surface: every later call flows through MCP the same way
+    Agent->>Surface: snapshot({ match: "orders" })
+    Surface-->>Agent: graph - states, latest values, subscribe-site stacks
+    Agent->>Surface: log("orders")
+    Dev->>App: clicks around the app
+    App->>Surface: notifications recorded into the ring buffer
+    loop until enough evidence
+        Agent->>Surface: logs({ sinceIndex })
+        Surface-->>Agent: only the new entries
+    end
+    Agent-->>Dev: finding, correlated with your source code
+        </div>
+    </div>
+    <div class="key-points">
+        <ul>
+            <li>The developer never types spy commands — the request is plain language in chat.</li>
+            <li>The agent pulls values by polling <code>logs({ sinceIndex })</code>; the ring buffer means nothing is lost between polls.</li>
+            <li>The answer lands in the chat: the page holds the evidence, the conversation is where debugging happens.</li>
+        </ul>
+    </div>
+
+    <h2>3 · One subscription's lifecycle: S N* (C|E)? U</h2>
+    <div class="diagram-container">
+        <div class="mermaid">
+stateDiagram-v2
+    [*] --> Active: S subscribe
+    Active --> Active: N next - latest values kept
+    Active --> Completed: C complete
+    Active --> Errored: E error
+    Active --> TornDown: U unsubscribe - cancelled
+    Completed --> TornDown: U automatic teardown
+    Errored --> TornDown: U automatic teardown
+    TornDown --> [*]: flushed after keptDuration
+    note right of Active
+        An S without its U is a live
+        subscription - or a leak.
+        lifecycles() finds these.
+    end note
+        </div>
+    </div>
+    <div class="key-points">
+        <ul>
+            <li>Every trace follows one grammar: <code>S N… C U</code> (completed), <code>S N… E U</code> (errored), or <code>S N… U</code> (cancelled).</li>
+            <li><code>U</code> always closes the lifecycle — the spy emits it even after <code>C</code>/<code>E</code>, so leak-checking is mechanical.</li>
+            <li><code>E</code> followed by a fresh <code>S</code> on the same tag is a <code>retry()</code> resubscribing.</li>
+        </ul>
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            sequence: {
+                diagramMarginX: 50,
+                diagramMarginY: 10,
+                actorMargin: 80,
+                boxMargin: 10,
+                messageMargin: 35,
+                useMaxWidth: true
+            },
+            flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' }
+        });
+    </script>
+</body>
+</html>

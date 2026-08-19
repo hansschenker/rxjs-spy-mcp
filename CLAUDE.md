@@ -31,11 +31,12 @@ Supporting modules:
 
 - `src/metadata.ts` + `src/operators/tag.ts|hide.ts` — tags/hidden flags live in a WeakMap keyed by the observable returned from the operator (which wraps the source in a plain `new Observable`). `hide()` suppresses tracing for the whole synchronous subscription subtree.
 - `src/match.ts` — `Match = string | RegExp | predicate | Observable`; strings match tag or ids; `parseMatch()` turns `"/exp/flags"` strings (from the MCP boundary) into RegExps.
-- `src/serialize.ts` — `toSerializable()` makes any runtime value JSON-safe with bounded size (circulars, functions, observables, errors → descriptive strings). Everything crossing the MCP boundary goes through it.
+- `src/serialize.ts` — `toSerializable()` makes any runtime value JSON-safe with bounded size (circulars, functions, observables, errors → descriptive strings) and redacts sensitive-looking keys by default (`DEFAULT_REDACT_KEYS`, case-insensitive substring match — spy output is read by AI agents, secrets must not leave the page). Everything crossing the MCP boundary goes through it.
 - `src/snapshot.ts` — pure function building the JSON-safe subscription-graph tree from records.
 - `src/plugin.ts` — the plugin seam (`before*`/`after*` hooks). Deferred v8 features (pause decks, cycle detection, stats, debug, let) are meant to return as plugins; `src/log-plugin.ts` is the model implementation.
 - `src/surface.ts` — the `__RXJS_SPY__` global: `help()`, `status()`, `listTags()`, `snapshot()`, `lifecycles()` (leak check: open subscriptions = S without U), `log()`/`logs()`/`activeLogs()`/`unlog()`, `flush()`, `teardown()`. All methods are synchronous, JSON-only, and return `{ error: { message } }` instead of throwing. `help()` is machine-readable and must stay in sync with the surface (a test enforces this).
 - `src/ring-buffer.ts` — log entries are buffered with monotonic indices; agents poll incrementally via `logs({ sinceIndex })` rather than scraping console output.
+- `src/panel.ts` — `mountDebugPanel(spy)`, a self-contained in-page overlay (status + live trace) shipped as the separate `rxjs-spy/panel` export so it stays out of bundles unless imported. DOM tests use `// @vitest-environment happy-dom`.
 
 ## The MCP debugging workflow this is built for
 
